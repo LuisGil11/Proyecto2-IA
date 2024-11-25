@@ -5,3 +5,6 @@ pandas
 matplotlib
 spaCy 
 tqdm
+huggingface_hub
+fsspec
+scikit-learn

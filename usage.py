@@ -8,16 +8,9 @@ from keras._tf_keras.keras.preprocessing.text import one_hot
 
 nlp = spacy.load('es_core_news_md')
 
-def replace_numbers_with_letters(text):
-    replacements = {'4': 'a', '3': 'e', '7': 't', '0': 'o', '1': 'i', '8': 'b', '9': 'g', '5': 's'}
-    for number, letter in replacements.items():
-        text = re.sub(number, letter, text)
-    return text
-
 def normalize(comentarios, min_word=5):
     comentarios_list = []
     for comentario in tqdm.tqdm(comentarios):
-        comentario[0] = replace_numbers_with_letters(comentario[0])
         # Tokenizamos el comentario
         comment = nlp(comentario[0].replace('.', ' ').replace('-', '').replace('?', ' ').replace('!', ' ').replace(',', ' ').replace('¿', ' ').replace('¡', ' ').strip())
         comment = ([word.lemma_ for word in comment if (not word.is_punct) and (not ':' in word.text)])
@@ -57,6 +50,6 @@ predicciones_probabilidades = tf.nn.softmax(predicciones).numpy()
 print(predicciones_probabilidades)
 
 if (predicciones_probabilidades[0][0] > 0.50):
-    print("El texto se considera como un comentario de odio")
+    print("El texto no se considera como un sarcástico")
 else:
-    print("El texto no se considera como un comentario de odio")
+    print("El texto se considera como un sarcástico")

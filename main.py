@@ -14,28 +14,22 @@ from tqdm import tqdm
 import spacy
 import re
 
+splits = {'train': 'train.csv', 'validation': 'validation.csv'}
+trainning_df = pd.read_csv("hf://datasets/Ernesto-1997/Sarcastic_spanish_dataset/" + splits["train"])
+validation_df = pd.read_csv("hf://datasets/Ernesto-1997/Sarcastic_spanish_dataset/" + splits["validation"])
 
+print('Número de Comentarios de entrenamiento Cargados: {num}'.format(num=trainning_df.shape[0]))
+print('Número de Comentarios de validación Cargados: {num}'.format(num=validation_df.shape[0]))
 
-df = pd.read_csv('./comentarios_de_odio.csv')
-
-print('Número de Comentarios Cargados: {num}'.format(num=df.shape[0]))
-
-comentarios = [list(x) for x in df[['test_case', 'label_gold']].values]
+trainning_comentarios = [list(x) for x in trainning_df[['Texto', 'Sarcasmo']].values]
+validation_comentarios = [list(x) for x in validation_df[['Texto', 'Sarcasmo']].values]
 
 nlp = spacy.load('es_core_news_md')
-
-def replace_numbers_with_letters(text):
-    replacements = {'4': 'a', '3': 'e', '7': 't', '0': 'o', '1': 'i', '8': 'b', '9': 'g', '5': 's'}
-    for number, letter in replacements.items():
-        text = re.sub(number, letter, text)
-    return text
 
 def normalize(comentarios, min_word=5):
 
     comentarios_list = []
     for comentario in tqdm(comentarios):
-
-        comentario[0] = replace_numbers_with_letters(comentario[0])
 
         # Tokenizamos el comentario
         comment = nlp(comentario[0].replace('.', ' ').replace('-', '').replace('?', ' ').replace('!', ' ').replace(',', ' ').replace('¿', ' ').replace('¡', ' ').strip())
@@ -46,36 +40,28 @@ def normalize(comentarios, min_word=5):
             comentarios_list.append([' '.join(comment), comentario[1]])
     return comentarios_list
 
-X_norm = normalize(comentarios)
+X_train_norm = normalize(trainning_comentarios)
+X_test_norm = normalize(validation_comentarios)
 
-X = [doc[0] for doc in X_norm]
-y = np.array([doc[1] for doc in X_norm])
+X_train = [doc[0] for doc in X_train_norm]
+y_train = np.array([doc[1] for doc in X_train_norm])
+X_test = [doc[0] for doc in X_test_norm]
+y_test = np.array([doc[1] for doc in X_test_norm])
 
-PCT_TEST = 0.02
-n_tail = len(X) - int(len(X) * PCT_TEST)
-print('Corte en el tweet número {} de los {} tweets del Dataset.'.format(n_tail, len(X)))
-
-X_train = X[:n_tail]
-y_train = y[:n_tail]
-X_test = X[n_tail:]
-y_test = y[n_tail:]
-
-print('Tweets de entrenamiento: {}'.format(len(X_train)))
-print('Tweets de Test: {}'.format(len(X_test)))
+print('comentarios de entrenamiento: {}'.format(len(X_train)))
+print('comentarios de Test: {}'.format(len(X_test)))
 
 from sklearn.preprocessing import LabelEncoder
 from keras._tf_keras.keras.preprocessing.text import one_hot
 
 # Hacemos un one-hot encoder del texto
-VOCAB_SIZE = 100000 # Poner un valor muy alto
+VOCAB_SIZE = 100000
 X_train = [one_hot(doc, VOCAB_SIZE) for doc in X_train]
 X_test = [one_hot(doc, VOCAB_SIZE) for doc in X_test]
 
-# Codificación del Target
 encoder = LabelEncoder()
 encoder.fit(y_train)
 
-# Imprimir el mapeo de clases
 class_mapping = dict(zip(encoder.classes_, encoder.transform(encoder.classes_)))
 print("Mapeo de clases:", class_mapping)
 
@@ -96,7 +82,15 @@ model.add(Embedding(VOCAB_SIZE, EMBEDDING_SIZE))
 model.add(LSTM(EMBEDDING_SIZE))
 model.add(Dropout(0.05))
 model.add(Dense(2, activation='softmax'))
+# Compilación del modelo
 model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Entrenamiento del modelo
+history = model.fit(pad_corpus_train, y_train, epochs=50, batch_size=32, validation_data=(pad_corpus_test, y_test))
+
+# Evaluación del modelo
+loss, accuracy = model.evaluate(pad_corpus_test, y_test)
+print(f'Loss: {loss}, Accuracy: {accuracy}')
 
 # Imprimimos la arquitectura de la red
 model.summary()
@@ -105,26 +99,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import absl.logging
 absl.logging.set_verbosity(absl.logging.ERROR)
-
-from keras._tf_keras.keras.callbacks import TensorBoard
-import datetime
-
-# Configuramos TensorBoard
-now = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-os.makedirs('tensorboard_logs/{}'.format(now))
-tensorboard_path = os.path.join('tensorboard_logs', now)
-tensorboard = TensorBoard(log_dir=tensorboard_path,
-                          histogram_freq=2,
-                          write_graph=True,
-                          write_images=True)
-
-history=model.fit(pad_corpus_train, 
-                  y_train, 
-                  batch_size=128, 
-                  epochs=30, 
-                  validation_data=(pad_corpus_test, y_test), 
-                  verbose=2)
-
 
 import matplotlib.pyplot as plt
 
