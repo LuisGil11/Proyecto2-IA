@@ -19,7 +19,7 @@ def normalize(comentarios, min_word=5):
     return comentarios_list
 
 # Cargar el modelo entrenado
-model = tf.keras.models.load_model('ruta_al_modelo/modelo_entrenado.h5')
+model = tf.keras.models.load_model('model.h5')
 
 # Solicitar los inputs al usuario
 input_text = input("Introduce el texto a procesar: ")
@@ -39,17 +39,15 @@ one_hot_sequences = [one_hot(doc, VOCAB_SIZE) for doc in normalized_text]
 MAX_WORDS = 50
 padded_sequences = keras.utils.pad_sequences(one_hot_sequences, maxlen=MAX_WORDS, padding='post')
 
-print(padded_sequences)
-
 # Realizar la predicción
 predicciones = model.predict(padded_sequences)
 
 # Aplicar softmax si es necesario (para obtener probabilidades)
-predicciones_probabilidades = tf.nn.softmax(predicciones).numpy()
+# predicciones_probabilidades = tf.nn.softmax(predicciones).numpy()
 
-print(predicciones_probabilidades)
+print(predicciones)
 
-if (predicciones_probabilidades[0][0] > 0.50):
+if (predicciones[0][0] > 0.50):
     print("El texto no se considera como un sarcástico")
 else:
     print("El texto se considera como un sarcástico")
