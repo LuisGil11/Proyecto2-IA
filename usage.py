@@ -48,6 +48,6 @@ predicciones = model.predict(padded_sequences)
 print(predicciones)
 
 if (predicciones[0][0] > 0.50):
-    print("El texto no se considera como un sarcástico")
+    print("El texto se considera como un comentario de odio")
 else:
-    print("El texto se considera como un sarcástico")
+    print("El texto no se considera como un comentario de odio")
