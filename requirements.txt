@@ -8,3 +8,5 @@ tqdm
 huggingface_hub
 fsspec
 scikit-learn
+pyarrow
+lime
